@@ -1,0 +1,22 @@
+dist: trusty
+jdk: oraclejdk8
+node_js: "10"
+dart: 
+  - 1.23.0
+install:
+  - npm install -g bower
+  - npm install -g grunt-cli
+  - npm install -g gulp
+cache:
+  directories:
+  - $HOME/.m2
+  - $HOME/.npm
+env:
+  - MOZ_HEADLESS=1
+addons:
+  firefox: latest
+before_script:
+  - git remote add nuxeo https://github.com/nuxeo/nuxeo.git
+  - ./clone.py -r nuxeo master
+script:
+  - mvn clean package -q -fae -Paddons,-qa
