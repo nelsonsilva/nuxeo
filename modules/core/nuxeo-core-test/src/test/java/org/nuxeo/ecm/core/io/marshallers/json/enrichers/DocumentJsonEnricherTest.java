@@ -76,4 +76,26 @@ public class DocumentJsonEnricherTest extends AbstractJsonWriterTest.Local<Docum
         json.has("param2");
     }
 
+    @Test
+    public void testEnrichersTracing() throws Exception {
+        DocumentModel root = session.getDocument(new PathRef("/"));
+        RenderingContext ctx = CtxBuilder.enrichDoc("children", "breadcrumb", "permissions", "subtypes")
+                .param("enrichers-tracing", true)
+                .get();
+        JsonAssert json = jsonAssert(root, ctx);
+        json = json.has("contextParameters");
+        json.properties(5);
+        json.has("children");
+        json.has("breadcrumb");
+        json.has("permissions");
+        json.has("subtypes");
+        json.has("tracing");
+
+        json = json.get("tracing");
+        json.properties(4);
+        json.has("children");
+        json.has("breadcrumb");
+        json.has("permissions");
+        json.has("subtypes");
+    }
 }

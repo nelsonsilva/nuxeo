@@ -22,18 +22,22 @@ package org.nuxeo.ecm.core.io.marshallers.json;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
 import static org.nuxeo.ecm.core.io.marshallers.json.enrichers.AbstractJsonEnricher.ENTITY_ENRICHER_NAME;
 import static org.nuxeo.ecm.core.io.registry.MarshallingConstants.ENTITY_FIELD_NAME;
+import static org.nuxeo.ecm.core.io.registry.MarshallingConstants.EMBED_ENRICHERS;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.nuxeo.ecm.core.io.marshallers.json.enrichers.Enriched;
 import org.nuxeo.ecm.core.io.registry.MarshallerRegistry;
+import org.nuxeo.ecm.core.io.registry.MarshallingConstants;
 import org.nuxeo.ecm.core.io.registry.Writer;
 import org.nuxeo.ecm.core.io.registry.context.MaxDepthReachedException;
 import org.nuxeo.ecm.core.io.registry.context.RenderingContext;
@@ -50,6 +54,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
  */
 public abstract class ExtensibleEntityJsonWriter<EntityType> extends AbstractJsonWriter<EntityType> {
 
+    protected static final String TRACING_PARAMETER = EMBED_ENRICHERS + "-tracing";
     /**
      * The "entity-type" Json property value.
      */
@@ -82,6 +87,9 @@ public abstract class ExtensibleEntityJsonWriter<EntityType> extends AbstractJso
             WrappedContext wrappedCtx = ctx.wrap().controlDepth();
             Set<String> enrichers = ctx.getEnrichers(entityType);
             if (enrichers.size() > 0) {
+                Map<String, Long> traces = new HashMap<>();
+                boolean tracing = ctx.getBooleanParameter(TRACING_PARAMETER)
+                        || ctx.getBooleanParameter(MarshallingConstants.HEADER_PREFIX + TRACING_PARAMETER);
                 boolean hasEnrichers = false;
                 Enriched<EntityType> enriched = null;
                 for (String enricherName : enrichers) {
@@ -97,9 +105,14 @@ public abstract class ExtensibleEntityJsonWriter<EntityType> extends AbstractJso
                                 enriched = new Enriched<>(entity);
                             }
                             OutputStreamWithJsonWriter out = new OutputStreamWithJsonWriter(jg);
+                            long startTime = System.nanoTime();
                             writer.write(enriched, Enriched.class, this.genericType, APPLICATION_JSON_TYPE, out);
+                            traces.put(enricherName, System.nanoTime() - startTime);
                         }
                     }
+                }
+                if (tracing) {
+                    jg.writeObjectField("tracing", traces);
                 }
                 if (hasEnrichers) {
                     jg.writeEndObject();
